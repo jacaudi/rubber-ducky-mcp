@@ -325,8 +325,24 @@ func TestPrintSchema(t *testing.T) {
 	if !bytes.Contains(d.InputSchema, []byte(`"thought"`)) {
 		t.Errorf("inputSchema missing the 'thought' property: %s", d.InputSchema)
 	}
-	if len(d.OutputSchema) == 0 || string(d.OutputSchema) == "null" {
-		t.Errorf("outputSchema missing: %s", d.OutputSchema)
+	if !bytes.Contains(d.OutputSchema, []byte(`"sessionConfidence"`)) {
+		t.Errorf("outputSchema missing the 'sessionConfidence' property: %s", d.OutputSchema)
+	}
+}
+
+func TestRunCLIJSONOutput(t *testing.T) {
+	in := `{"thought":"x","thoughtNumber":1,"totalThoughts":1,"nextThoughtNeeded":false,"confidence":0.5,"assumptions":[],"critique":"c","counterArgument":"ca"}` + "\n"
+	var out, errb bytes.Buffer
+	code := runCLI(strings.NewReader(in), &out, &errb, true)
+	if code != 0 {
+		t.Fatalf("exit = %d; stderr = %s", code, errb.String())
+	}
+	var resp thinking.ThoughtResponse
+	if err := json.Unmarshal(bytes.TrimSpace(out.Bytes()), &resp); err != nil {
+		t.Fatalf("stdout is not NDJSON ThoughtResponse: %v\n%s", err, out.String())
+	}
+	if resp.ThoughtNumber != 1 || resp.ThoughtHistoryLength != 1 {
+		t.Errorf("resp = %+v", resp)
 	}
 }
 
