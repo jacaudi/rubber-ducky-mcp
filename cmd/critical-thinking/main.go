@@ -82,6 +82,11 @@ func main() {
 	jsonOut := flag.Bool("json", false, "with -cli, emit structured ThoughtResponse as NDJSON instead of the transcript")
 	flag.Parse()
 
+	if *jsonOut && !*cliMode {
+		fmt.Fprintln(os.Stderr, "cli: -json requires -cli")
+		os.Exit(1)
+	}
+
 	switch {
 	case *cliMode:
 		os.Exit(runCLI(os.Stdin, os.Stdout, os.Stderr, *jsonOut))

@@ -366,6 +366,52 @@ func TestRunCLITranscriptAndAccumulation(t *testing.T) {
 	}
 }
 
+func TestRunCLIMalformedLineContinues(t *testing.T) {
+	in := "{not json\n" +
+		`{"thought":"ok","thoughtNumber":1,"totalThoughts":1,"nextThoughtNeeded":false,"confidence":0.5,"assumptions":[],"critique":"c","counterArgument":"ca"}` + "\n"
+	var out, errb bytes.Buffer
+	code := runCLI(strings.NewReader(in), &out, &errb, false)
+	if code != 1 {
+		t.Errorf("exit = %d; want 1", code)
+	}
+	if !strings.Contains(errb.String(), "line 1") {
+		t.Errorf("stderr should reference line 1: %q", errb.String())
+	}
+	if !strings.Contains(out.String(), "Thought 1 of 1") {
+		t.Errorf("a valid line after a bad one must still render:\n%s", out.String())
+	}
+}
+
+func TestRunCLIValidationErrorRouting(t *testing.T) {
+	// Missing required "critique" → validation error result (IsError).
+	bad := `{"thought":"x","thoughtNumber":1,"totalThoughts":1,"nextThoughtNeeded":false,"confidence":0.5,"assumptions":[],"counterArgument":"ca"}` + "\n"
+
+	// default mode: error JSON to stderr, nothing to stdout.
+	var out, errb bytes.Buffer
+	if code := runCLI(strings.NewReader(bad), &out, &errb, false); code != 1 {
+		t.Errorf("default mode exit = %d; want 1", code)
+	}
+	if out.Len() != 0 || !strings.Contains(errb.String(), `"status":"failed"`) {
+		t.Errorf("default: want error JSON on stderr only; out=%q err=%q", out.String(), errb.String())
+	}
+
+	// -json mode: error JSON to stdout (keeps the NDJSON stream complete).
+	var out2, errb2 bytes.Buffer
+	if code := runCLI(strings.NewReader(bad), &out2, &errb2, true); code != 1 {
+		t.Errorf("json mode exit = %d; want 1", code)
+	}
+	if !strings.Contains(out2.String(), `"status":"failed"`) {
+		t.Errorf("json: error JSON should go to stdout; out=%q", out2.String())
+	}
+}
+
+func TestRunCLIBlankAndEmpty(t *testing.T) {
+	var out, errb bytes.Buffer
+	if code := runCLI(strings.NewReader("\n   \n"), &out, &errb, false); code != 0 || out.Len() != 0 {
+		t.Errorf("blank/empty: code=%d out=%q", code, out.String())
+	}
+}
+
 func TestThinkingCurrentResourceIsPerSession(t *testing.T) {
 	registry := newSessionRegistry()
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
