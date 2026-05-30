@@ -46,8 +46,12 @@ type toolDescriptor struct {
 // printSchema writes the criticalthinking tool contract (description + JSON
 // Schemas) to w as pretty JSON. Schemas come from jsonschema.For[T](nil),
 // which defaults to &jsonschema.ForOptions{} — the same call the MCP SDK makes
-// internally (jsonschema.ForType(rt, &jsonschema.ForOptions{})), so the CLI
-// and the MCP transport advertise the identical wire schema.
+// internally (jsonschema.ForType(rt, &jsonschema.ForOptions{})). The
+// inputSchema is therefore byte-identical to what MCP clients receive in
+// tools/list. The outputSchema is what the SDK would generate for
+// ThoughtResponse (and what the tool's structuredContent conforms to); the
+// MCP tool itself advertises no output schema, since its handler output type
+// is `any`.
 func printSchema(w io.Writer) error {
 	in, err := jsonschema.For[thinking.ThoughtData](nil)
 	if err != nil {
