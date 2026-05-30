@@ -302,6 +302,34 @@ func TestCrossSessionIsolation(t *testing.T) {
 	}
 }
 
+func TestPrintSchema(t *testing.T) {
+	var buf bytes.Buffer
+	if err := printSchema(&buf); err != nil {
+		t.Fatalf("printSchema: %v", err)
+	}
+	var d struct {
+		Name         string          `json:"name"`
+		Description  string          `json:"description"`
+		InputSchema  json.RawMessage `json:"inputSchema"`
+		OutputSchema json.RawMessage `json:"outputSchema"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &d); err != nil {
+		t.Fatalf("output is not valid JSON: %v", err)
+	}
+	if d.Name != "criticalthinking" {
+		t.Errorf("name = %q; want criticalthinking", d.Name)
+	}
+	if d.Description != thinking.ToolDescription {
+		t.Error("description does not match thinking.ToolDescription")
+	}
+	if !bytes.Contains(d.InputSchema, []byte(`"thought"`)) {
+		t.Errorf("inputSchema missing the 'thought' property: %s", d.InputSchema)
+	}
+	if len(d.OutputSchema) == 0 || string(d.OutputSchema) == "null" {
+		t.Errorf("outputSchema missing: %s", d.OutputSchema)
+	}
+}
+
 func TestThinkingCurrentResourceIsPerSession(t *testing.T) {
 	registry := newSessionRegistry()
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/jacaudi/critical-thinking/internal/thinking"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -29,7 +32,50 @@ const (
 	shutdownGrace = 10 * time.Second
 )
 
+// toolDescriptor mirrors what MCP clients receive via tools/list, so a model
+// driving the CLI sees the same contract.
+type toolDescriptor struct {
+	Name         string             `json:"name"`
+	Description  string             `json:"description"`
+	InputSchema  *jsonschema.Schema `json:"inputSchema"`
+	OutputSchema *jsonschema.Schema `json:"outputSchema"`
+}
+
+// printSchema writes the criticalthinking tool contract (description + JSON
+// Schemas) to w as pretty JSON. Schemas come from jsonschema.For[T](nil),
+// which defaults to &jsonschema.ForOptions{} — the same call the MCP SDK makes
+// internally (jsonschema.ForType(rt, &jsonschema.ForOptions{})), so the CLI
+// and the MCP transport advertise the identical wire schema.
+func printSchema(w io.Writer) error {
+	in, err := jsonschema.For[thinking.ThoughtData](nil)
+	if err != nil {
+		return fmt.Errorf("input schema: %w", err)
+	}
+	out, err := jsonschema.For[thinking.ThoughtResponse](nil)
+	if err != nil {
+		return fmt.Errorf("output schema: %w", err)
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(toolDescriptor{
+		Name:         "criticalthinking",
+		Description:  thinking.ToolDescription,
+		InputSchema:  in,
+		OutputSchema: out,
+	})
+}
+
 func main() {
+	// `schema` subcommand: print the tool contract and exit. Checked before
+	// flag.Parse so the bare word isn't treated as a flag-parse error.
+	if len(os.Args) > 1 && os.Args[1] == "schema" {
+		if err := printSchema(os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "schema:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	flag.Parse()
 
 	if *httpAddr == "" {
