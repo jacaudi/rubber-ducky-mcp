@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -76,13 +78,72 @@ func main() {
 		os.Exit(0)
 	}
 
+	cliMode := flag.Bool("cli", false, "read NDJSON ThoughtData on stdin and stream transcripts (no MCP)")
+	jsonOut := flag.Bool("json", false, "with -cli, emit structured ThoughtResponse as NDJSON instead of the transcript")
 	flag.Parse()
 
-	if *httpAddr == "" {
+	switch {
+	case *cliMode:
+		os.Exit(runCLI(os.Stdin, os.Stdout, os.Stderr, *jsonOut))
+	case *httpAddr != "":
+		runHTTP(*httpAddr)
+	default:
 		runStdio()
-		return
 	}
-	runHTTP(*httpAddr)
+}
+
+// runCLI runs the thinking engine over a plain stdin→stdout loop (no MCP).
+// One in-memory thinking.NewServer() lives for the call, so history,
+// confidence, and branches accumulate across input lines — the analog of a
+// stdio MCP session. Input is NDJSON: one ThoughtData per non-blank line.
+// Returns 0 if every line succeeded, 1 if any line errored.
+func runCLI(stdin io.Reader, stdout, stderr io.Writer, jsonOut bool) int {
+	state := thinking.NewServer()
+	sc := bufio.NewScanner(stdin)
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // tolerate long thoughts
+	lineNo := 0
+	failed := false
+	for sc.Scan() {
+		lineNo++
+		line := bytes.TrimSpace(sc.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+		var td thinking.ThoughtData
+		if err := json.Unmarshal(line, &td); err != nil {
+			fmt.Fprintf(stderr, "cli: line %d: %v\n", lineNo, err)
+			failed = true
+			continue
+		}
+		res, err := state.ProcessThought(td)
+		if err != nil {
+			fmt.Fprintf(stderr, "cli: line %d: %v\n", lineNo, err)
+			failed = true
+			continue
+		}
+		if res.IsError {
+			failed = true
+			if jsonOut {
+				fmt.Fprintln(stdout, res.Text) // error JSON keeps NDJSON aligned
+			} else {
+				fmt.Fprintln(stderr, res.Text)
+			}
+			continue
+		}
+		if jsonOut {
+			fmt.Fprintln(stdout, res.StructuredJSON)
+		} else {
+			fmt.Fprintf(stdout, "%s\n\n", res.Text)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		fmt.Fprintf(stderr, "cli: read: %v\n", err)
+		return 1
+	}
+	if failed {
+		return 1
+	}
+	return 0
 }
 
 // runStdio runs the server with one global SequentialThinkingServer instance.

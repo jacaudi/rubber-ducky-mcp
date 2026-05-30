@@ -330,6 +330,26 @@ func TestPrintSchema(t *testing.T) {
 	}
 }
 
+func TestRunCLITranscriptAndAccumulation(t *testing.T) {
+	in := strings.Join([]string{
+		`{"thought":"first","thoughtNumber":1,"totalThoughts":2,"nextThoughtNeeded":true,"confidence":0.5,"assumptions":[],"critique":"c","counterArgument":"ca","nextStepRationale":"continue"}`,
+		`{"thought":"second","thoughtNumber":2,"totalThoughts":2,"nextThoughtNeeded":false,"confidence":0.7,"assumptions":[],"critique":"c2","counterArgument":"ca2"}`,
+	}, "\n") + "\n"
+
+	var out, errb bytes.Buffer
+	code := runCLI(strings.NewReader(in), &out, &errb, false)
+	if code != 0 {
+		t.Fatalf("exit = %d; stderr = %s", code, errb.String())
+	}
+	s := out.String()
+	if !strings.Contains(s, "Thought 1 of 2") || !strings.Contains(s, "Thought 2 of 2") {
+		t.Errorf("missing thought headers:\n%s", s)
+	}
+	if !strings.Contains(s, "across 2 thoughts") {
+		t.Errorf("expected accumulated footer 'across 2 thoughts':\n%s", s)
+	}
+}
+
 func TestThinkingCurrentResourceIsPerSession(t *testing.T) {
 	registry := newSessionRegistry()
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
