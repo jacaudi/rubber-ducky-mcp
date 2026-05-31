@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.5.0](https://github.com/jacaudi/critical-thinking/compare/v1.4.2...v1.5.0) (2026-05-31)
+### Features
+
+* add -cli streaming mode and schema subcommand ([#49](https://github.com/jacaudi/critical-thinking/issues/49)) ([462c5b9](https://github.com/jacaudi/critical-thinking/commit/462c5b932b7dc3d40ddb11163e9f18f245745d98))
+
 ## [1.4.2](https://github.com/jacaudi/critical-thinking/compare/v1.4.1...v1.4.2) (2026-05-12)
 ### Bug Fixes
 
