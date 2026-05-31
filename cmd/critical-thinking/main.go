@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/jacaudi/critical-thinking/internal/thinking"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -29,14 +34,125 @@ const (
 	shutdownGrace = 10 * time.Second
 )
 
+// toolDescriptor mirrors what MCP clients receive via tools/list, so a model
+// driving the CLI sees the same contract.
+type toolDescriptor struct {
+	Name         string             `json:"name"`
+	Description  string             `json:"description"`
+	InputSchema  *jsonschema.Schema `json:"inputSchema"`
+	OutputSchema *jsonschema.Schema `json:"outputSchema"`
+}
+
+// printSchema writes the criticalthinking tool contract (description + JSON
+// Schemas) to w as pretty JSON. Schemas come from jsonschema.For[T](nil),
+// which defaults to &jsonschema.ForOptions{} — the same call the MCP SDK makes
+// internally (jsonschema.ForType(rt, &jsonschema.ForOptions{})). The
+// inputSchema is therefore byte-identical to what MCP clients receive in
+// tools/list. The outputSchema is what the SDK would generate for
+// ThoughtResponse (and what the tool's structuredContent conforms to); the
+// MCP tool itself advertises no output schema, since its handler output type
+// is `any`.
+func printSchema(w io.Writer) error {
+	in, err := jsonschema.For[thinking.ThoughtData](nil)
+	if err != nil {
+		return fmt.Errorf("input schema: %w", err)
+	}
+	out, err := jsonschema.For[thinking.ThoughtResponse](nil)
+	if err != nil {
+		return fmt.Errorf("output schema: %w", err)
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(toolDescriptor{
+		Name:         "criticalthinking",
+		Description:  thinking.ToolDescription,
+		InputSchema:  in,
+		OutputSchema: out,
+	})
+}
+
 func main() {
+	// `schema` subcommand: print the tool contract and exit. Checked before
+	// flag.Parse so the bare word isn't treated as a flag-parse error.
+	if len(os.Args) > 1 && os.Args[1] == "schema" {
+		if err := printSchema(os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "schema:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	cliMode := flag.Bool("cli", false, "read NDJSON ThoughtData on stdin and stream transcripts (no MCP)")
+	jsonOut := flag.Bool("json", false, "with -cli, emit structured ThoughtResponse as NDJSON instead of the transcript")
 	flag.Parse()
 
-	if *httpAddr == "" {
-		runStdio()
-		return
+	if *jsonOut && !*cliMode {
+		fmt.Fprintln(os.Stderr, "cli: -json requires -cli")
+		os.Exit(1)
 	}
-	runHTTP(*httpAddr)
+
+	switch {
+	case *cliMode:
+		os.Exit(runCLI(os.Stdin, os.Stdout, os.Stderr, *jsonOut))
+	case *httpAddr != "":
+		runHTTP(*httpAddr)
+	default:
+		runStdio()
+	}
+}
+
+// runCLI runs the thinking engine over a plain stdin→stdout loop (no MCP).
+// One in-memory thinking.NewServer() lives for the call, so history,
+// confidence, and branches accumulate across input lines — the analog of a
+// stdio MCP session. Input is NDJSON: one ThoughtData per non-blank line.
+// Returns 0 if every line succeeded, 1 if any line errored.
+func runCLI(stdin io.Reader, stdout, stderr io.Writer, jsonOut bool) int {
+	state := thinking.NewServer()
+	sc := bufio.NewScanner(stdin)
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // tolerate long thoughts
+	lineNo := 0
+	failed := false
+	for sc.Scan() {
+		lineNo++
+		line := bytes.TrimSpace(sc.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+		var td thinking.ThoughtData
+		if err := json.Unmarshal(line, &td); err != nil {
+			fmt.Fprintf(stderr, "cli: line %d: %v\n", lineNo, err)
+			failed = true
+			continue
+		}
+		res, err := state.ProcessThought(td)
+		if err != nil {
+			fmt.Fprintf(stderr, "cli: line %d: %v\n", lineNo, err)
+			failed = true
+			continue
+		}
+		if res.IsError {
+			failed = true
+			if jsonOut {
+				fmt.Fprintln(stdout, res.Text) // error JSON keeps NDJSON aligned
+			} else {
+				fmt.Fprintln(stderr, res.Text)
+			}
+			continue
+		}
+		if jsonOut {
+			fmt.Fprintln(stdout, res.StructuredJSON)
+		} else {
+			fmt.Fprintf(stdout, "%s\n\n", res.Text)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		fmt.Fprintf(stderr, "cli: read: %v\n", err)
+		return 1
+	}
+	if failed {
+		return 1
+	}
+	return 0
 }
 
 // runStdio runs the server with one global SequentialThinkingServer instance.

@@ -31,7 +31,14 @@ critical-thinking -http :3000
 
 # Docker (HTTP on :3000)
 docker run --rm -p 3000:3000 ghcr.io/jacaudi/critical-thinking:v1.4.2
+
+# CLI mode — pipe NDJSON ThoughtData directly, no MCP host required
+critical-thinking -cli            # prints narrated transcript to stdout
+critical-thinking -cli -json      # prints structured ThoughtResponse as NDJSON
+critical-thinking schema          # prints the tool contract (description + JSON Schemas) and exits
 ```
+
+See [docs/clients.md#cli-no-mcp-host](docs/clients.md#cli-no-mcp-host) for CLI usage details and error-handling behaviour.
 
 ## One-call example
 

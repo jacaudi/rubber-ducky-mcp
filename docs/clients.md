@@ -121,3 +121,24 @@ docker run -d --name critical-thinking -p 3000:3000 ghcr.io/jacaudi/critical-thi
 ```
 
 Then use the HTTP client config above. The image binds to `0.0.0.0` automatically (via `DOCKER=true`); pair it with appropriate firewall rules in production.
+
+## CLI (no MCP host)
+
+Run the engine directly, without an MCP client:
+
+```bash
+# Stream thoughts: one ThoughtData JSON object per line on stdin.
+printf '%s\n' '{"thought":"...","thoughtNumber":1,"totalThoughts":3,"nextThoughtNeeded":true,"confidence":0.6,"assumptions":[],"critique":"...","counterArgument":"...","nextStepRationale":"..."}' \
+  | critical-thinking -cli
+
+# Structured NDJSON output instead of the transcript:
+... | critical-thinking -cli -json
+
+# Print the tool contract (description + JSON Schemas) for a model to read:
+critical-thinking schema
+```
+
+`-cli` keeps one in-memory session for the process, so history, confidence, and
+branches accumulate across input lines. Validation/parse errors are written to
+stderr (or to stdout in `-json` mode, to keep the stream complete) and the
+process continues; the exit code is `1` if any line errored, else `0`.
