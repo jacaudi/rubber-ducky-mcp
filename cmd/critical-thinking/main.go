@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -375,7 +376,7 @@ func withCORS(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" {
-			if !contains(allowed, origin) {
+			if !slices.Contains(allowed, origin) {
 				http.Error(w, "Origin not allowed", http.StatusForbidden)
 				return
 			}
@@ -408,15 +409,6 @@ func parseAllowedOrigins(raw string) []string {
 		}
 	}
 	return out
-}
-
-func contains(haystack []string, needle string) bool {
-	for _, h := range haystack {
-		if h == needle {
-			return true
-		}
-	}
-	return false
 }
 
 func makeHealthHandler(r *sessionRegistry) http.HandlerFunc {

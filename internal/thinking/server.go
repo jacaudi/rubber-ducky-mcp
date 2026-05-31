@@ -3,7 +3,7 @@ package thinking
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -257,7 +257,7 @@ func sortedKeys(m map[string][]ThoughtData) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 	return keys
 }
 
