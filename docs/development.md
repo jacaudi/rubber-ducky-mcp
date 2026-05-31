@@ -50,7 +50,6 @@ The inspector lets you call `criticalthinking` interactively, watch the rendered
 │   ├── server.go                 # SequentialThinkingServer state machine
 │   └── *_test.go                 # unit tests
 ├── Dockerfile                    # multi-stage, distroless final
-└── docker-bake.hcl               # buildx bake config
 ```
 
 The `internal/thinking` package has zero dependency on the MCP SDK — `cmd/critical-thinking/main.go` is the only adapter. That keeps the state machine fully unit-testable.
