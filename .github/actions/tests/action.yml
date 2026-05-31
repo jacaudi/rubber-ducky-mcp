@@ -10,6 +10,12 @@ runs:
         go-version: '1.26'
         cache: true
 
+    - name: Setup Task
+      uses: arduino/setup-task@v2
+      with:
+        version: 3.x
+        repo-token: ${{ github.token }}
+
     - name: gofmt -d
       shell: bash
       run: |
@@ -21,14 +27,23 @@ runs:
           exit 1
         fi
 
-    - name: go vet
+    - name: vet
       shell: bash
-      run: go vet ./...
+      run: task vet
 
-    - name: go test -race
-      shell: bash
-      run: go test -race -coverprofile=coverage.txt ./...
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
 
-    - name: go build
+    - name: govulncheck
       shell: bash
-      run: go build -trimpath -ldflags "-s -w" -o /tmp/critical-thinking ./cmd/critical-thinking
+      run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+    - name: test (race + coverage)
+      shell: bash
+      run: task test-race
+
+    - name: build
+      shell: bash
+      run: task build
