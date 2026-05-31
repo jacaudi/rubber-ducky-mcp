@@ -267,20 +267,17 @@ func TestCrossSessionIsolation(t *testing.T) {
 	// Drive 10 thoughts through each, interleaved.
 	const N = 10
 	var wg sync.WaitGroup
-	wg.Add(2)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for i := 1; i <= N; i++ {
 			clientA.callTool(t, validInputN(i, "A"))
 		}
-	}()
-	go func() {
-		defer wg.Done()
+	})
+	wg.Go(func() {
 		for i := 1; i <= N; i++ {
 			clientB.callTool(t, validInputN(i, "B"))
 		}
-	}()
+	})
 	wg.Wait()
 
 	// Final call on each session: assert each only sees its own thoughts.

@@ -2,6 +2,7 @@ package thinking
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -109,7 +110,7 @@ func TestValidateRequiredFields(t *testing.T) {
 			if err == nil {
 				t.Fatalf("expected error containing %q, got nil", tc.wantErr)
 			}
-			if !contains(err.Error(), tc.wantErr) {
+			if !strings.Contains(err.Error(), tc.wantErr) {
 				t.Errorf("error = %q, want substring %q", err.Error(), tc.wantErr)
 			}
 		})
@@ -129,21 +130,6 @@ func TestValidateAcceptsEmptyAssumptions(t *testing.T) {
 	if err := td.Validate(); err != nil {
 		t.Fatalf("empty assumptions should be allowed, got: %v", err)
 	}
-}
-
-// contains is a tiny strings.Contains wrapper for table tests; implemented in
-// schema_test.go to keep production code free of test-only helpers.
-func contains(s, substr string) bool {
-	return len(substr) == 0 || (len(s) >= len(substr) && stringIndex(s, substr) >= 0)
-}
-
-func stringIndex(s, substr string) int {
-	for i := 0; i+len(substr) <= len(s); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
 }
 
 func TestValidateConfidenceRange(t *testing.T) {
@@ -179,7 +165,7 @@ func TestValidateConditionalNextStepRationale(t *testing.T) {
 		td.NextThoughtNeeded = boolPtr(true)
 		td.NextStepRationale = ""
 		err := td.Validate()
-		if err == nil || !contains(err.Error(), "nextStepRationale required") {
+		if err == nil || !strings.Contains(err.Error(), "nextStepRationale required") {
 			t.Errorf("expected nextStepRationale error, got %v", err)
 		}
 	})
@@ -215,7 +201,7 @@ func TestValidateBranchBothOrNeither(t *testing.T) {
 		td.BranchFromThought = intPtr(1)
 		td.BranchID = ""
 		err := td.Validate()
-		if err == nil || !contains(err.Error(), "branchFromThought and branchId") {
+		if err == nil || !strings.Contains(err.Error(), "branchFromThought and branchId") {
 			t.Errorf("expected both-or-neither error, got %v", err)
 		}
 	})
@@ -224,7 +210,7 @@ func TestValidateBranchBothOrNeither(t *testing.T) {
 		td.BranchFromThought = nil
 		td.BranchID = "branch-a"
 		err := td.Validate()
-		if err == nil || !contains(err.Error(), "branchFromThought and branchId") {
+		if err == nil || !strings.Contains(err.Error(), "branchFromThought and branchId") {
 			t.Errorf("expected both-or-neither error, got %v", err)
 		}
 	})

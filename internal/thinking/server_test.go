@@ -109,7 +109,7 @@ func TestProcessThoughtRevisesOutOfRange(t *testing.T) {
 	if !res.IsError {
 		t.Error("expected IsError for out-of-range revisesThought")
 	}
-	if !contains(res.Text, "revisesThought 99 out of range") {
+	if !strings.Contains(res.Text, "revisesThought 99 out of range") {
 		t.Errorf("error message: %s", res.Text)
 	}
 	if got := s.HistoryLength(); got != 1 {
@@ -176,7 +176,7 @@ func TestProcessThoughtRevisionRangeCheck(t *testing.T) {
 	if !res.IsError {
 		t.Error("expected IsError for out-of-range revisesThought")
 	}
-	if !contains(res.Text, "revisesThought 5 out of range") {
+	if !strings.Contains(res.Text, "revisesThought 5 out of range") {
 		t.Errorf("error message: %s", res.Text)
 	}
 }
@@ -320,20 +320,18 @@ func TestProcessThoughtConcurrent(t *testing.T) {
 	const goroutines = 100
 	const perGoroutine = 10
 	var wg sync.WaitGroup
-	wg.Add(goroutines)
 
-	for g := 0; g < goroutines; g++ {
-		go func(gID int) {
-			defer wg.Done()
-			for i := 0; i < perGoroutine; i++ {
-				td := validInput(gID*perGoroutine + i + 1)
+	for g := range goroutines {
+		wg.Go(func() {
+			for i := range perGoroutine {
+				td := validInput(g*perGoroutine + i + 1)
 				td.TotalThoughts = goroutines * perGoroutine
 				if _, err := s.ProcessThought(td); err != nil {
-					t.Errorf("goroutine %d iter %d: %v", gID, i, err)
+					t.Errorf("goroutine %d iter %d: %v", g, i, err)
 					return
 				}
 			}
-		}(g)
+		})
 	}
 	wg.Wait()
 
