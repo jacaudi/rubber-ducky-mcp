@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,8 +32,7 @@ func TestCORSDefaultRejectsBrowser(t *testing.T) {
 }
 
 func TestCORSAllowsConfiguredOrigin(t *testing.T) {
-	os.Setenv("ALLOWED_ORIGINS", "https://app.example,https://other.example")
-	defer os.Unsetenv("ALLOWED_ORIGINS")
+	t.Setenv("ALLOWED_ORIGINS", "https://app.example,https://other.example")
 
 	h := withCORS(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -203,7 +201,7 @@ func (c *httpClient) post(t *testing.T, payload string, withSession bool) (*http
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	return resp, string(body)
 }

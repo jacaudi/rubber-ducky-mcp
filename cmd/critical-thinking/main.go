@@ -26,8 +26,11 @@ import (
 // Injected at build time via -ldflags (see taskfile.yml / .goreleaser.yaml / Dockerfile).
 var (
 	version = "dev"
-	commit  = "unknown"
-	date    = "unknown"
+	// commit and date are populated by -ldflags but not yet read in code;
+	// consumption is wired up in a later task. Keep the vars so the build-time
+	// injection has a target.
+	commit = "unknown" //nolint:unused // set via -ldflags; consumed in a later task
+	date   = "unknown" //nolint:unused // set via -ldflags; consumed in a later task
 )
 
 var httpAddr = flag.String("http", "", "if set (e.g., \":3000\"), serve Streamable HTTP at this address; otherwise use stdio")
@@ -122,34 +125,36 @@ func runCLI(stdin io.Reader, stdout, stderr io.Writer, jsonOut bool) int {
 			continue
 		}
 		var td thinking.ThoughtData
+		// Write errors on stdout/stderr aren't actionable here; the exit code
+		// already reflects per-line success via failed.
 		if err := json.Unmarshal(line, &td); err != nil {
-			fmt.Fprintf(stderr, "cli: line %d: %v\n", lineNo, err)
+			_, _ = fmt.Fprintf(stderr, "cli: line %d: %v\n", lineNo, err)
 			failed = true
 			continue
 		}
 		res, err := state.ProcessThought(td)
 		if err != nil {
-			fmt.Fprintf(stderr, "cli: line %d: %v\n", lineNo, err)
+			_, _ = fmt.Fprintf(stderr, "cli: line %d: %v\n", lineNo, err)
 			failed = true
 			continue
 		}
 		if res.IsError {
 			failed = true
 			if jsonOut {
-				fmt.Fprintln(stdout, res.Text) // error JSON keeps NDJSON aligned
+				_, _ = fmt.Fprintln(stdout, res.Text) // error JSON keeps NDJSON aligned
 			} else {
-				fmt.Fprintln(stderr, res.Text)
+				_, _ = fmt.Fprintln(stderr, res.Text)
 			}
 			continue
 		}
 		if jsonOut {
-			fmt.Fprintln(stdout, res.StructuredJSON)
+			_, _ = fmt.Fprintln(stdout, res.StructuredJSON)
 		} else {
-			fmt.Fprintf(stdout, "%s\n\n", res.Text)
+			_, _ = fmt.Fprintf(stdout, "%s\n\n", res.Text)
 		}
 	}
 	if err := sc.Err(); err != nil {
-		fmt.Fprintf(stderr, "cli: read: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "cli: read: %v\n", err)
 		return 1
 	}
 	if failed {
@@ -186,21 +191,22 @@ func runStdio() {
 // the SDK closes a session we have no callback, so the count drifts upward.
 // /health exposes it as `sessionsCreated` to make the semantics explicit.
 func runHTTP(addr string) {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
-
-	registry := newSessionRegistry()
-
 	// Wire ALLOWED_ORIGINS into the SDK's CSRF protection so browser clients
 	// from those origins aren't rejected by the SDK's default same-origin
 	// policy. Non-browser callers (no Origin / no Sec-Fetch-Site) are still
-	// allowed regardless.
+	// allowed regardless. Built before the signal context's defer stop() is
+	// registered so a fatal config error here can't skip a pending defer.
 	csrf := http.NewCrossOriginProtection()
 	for _, o := range parseAllowedOrigins(os.Getenv("ALLOWED_ORIGINS")) {
 		if err := csrf.AddTrustedOrigin(o); err != nil {
 			log.Fatalf("invalid ALLOWED_ORIGINS entry %q: %v", o, err)
 		}
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	registry := newSessionRegistry()
 
 	handler := mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
 		state := thinking.NewServer()
@@ -239,6 +245,9 @@ func runHTTP(addr string) {
 
 	log.Printf("critical-thinking %s listening on http://%s", version, listenAddr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		// nolint:gocritic // defer stop() only unregisters signal handlers and is
+		// moot at process exit; the alternatives (return / os.Exit) would change the
+		// non-zero exit code or require refactoring runHTTP's signature.
 		log.Fatalf("listen: %v", err)
 	}
 }
