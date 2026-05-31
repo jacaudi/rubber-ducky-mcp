@@ -23,9 +23,12 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// version is set at build time via -ldflags "-X main.version=...". The
-// fallback "dev" identifies non-release builds.
-var version = "dev"
+// Injected at build time via -ldflags (see taskfile.yml / .goreleaser.yaml / Dockerfile).
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
 
 var httpAddr = flag.String("http", "", "if set (e.g., \":3000\"), serve Streamable HTTP at this address; otherwise use stdio")
 

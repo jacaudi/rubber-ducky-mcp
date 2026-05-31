@@ -1,0 +1,32 @@
+version: '3'
+
+vars:
+  BINARY: critical-thinking
+  PKG: ./cmd/critical-thinking
+  VERSION:
+    sh: git describe --tags --always --dirty
+  COMMIT:
+    sh: git rev-parse --short HEAD
+  DATE:
+    sh: date -u +%Y-%m-%dT%H:%M:%SZ
+  LDFLAGS: -s -w -X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.date={{.DATE}}
+
+tasks:
+  build:
+    cmds:
+      - CGO_ENABLED=0 go build -trimpath -ldflags "{{.LDFLAGS}}" -o bin/{{.BINARY}} {{.PKG}}
+  test:
+    cmds:
+      - go test ./...
+  test-race:
+    cmds:
+      - go test -race -coverprofile=coverage.txt ./...
+  vet:
+    cmds:
+      - go vet ./...
+  lint:
+    cmds:
+      - golangci-lint run ./...
+  clean:
+    cmds:
+      - rm -rf bin/ coverage.txt
