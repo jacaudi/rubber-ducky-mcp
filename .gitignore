@@ -1,5 +1,6 @@
 # Binaries
-/rubber-ducky-mcp
+/critical-thinking
+/bin/
 *.exe
 *.test
 *.out
