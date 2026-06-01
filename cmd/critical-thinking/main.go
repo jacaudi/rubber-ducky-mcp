@@ -27,11 +27,8 @@ import (
 // Injected at build time via -ldflags (see taskfile.yml / .goreleaser.yaml / Dockerfile).
 var (
 	version = "dev"
-	// commit and date are populated by -ldflags but not yet read in code;
-	// consumption is wired up in a later task. Keep the vars so the build-time
-	// injection has a target.
-	commit = "unknown" //nolint:unused // set via -ldflags; consumed in a later task
-	date   = "unknown" //nolint:unused // set via -ldflags; consumed in a later task
+	commit  = "unknown"
+	date    = "unknown"
 )
 
 var httpAddr = flag.String("http", "", "if set (e.g., \":3000\"), serve Streamable HTTP at this address; otherwise use stdio")
