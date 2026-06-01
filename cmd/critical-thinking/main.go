@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/jacaudi/critical-thinking/internal/thinking"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -37,43 +36,6 @@ const (
 	idleTimeout   = 60 * time.Minute
 	shutdownGrace = 10 * time.Second
 )
-
-// toolDescriptor mirrors what MCP clients receive via tools/list, so a model
-// driving the CLI sees the same contract.
-type toolDescriptor struct {
-	Name         string             `json:"name"`
-	Description  string             `json:"description"`
-	InputSchema  *jsonschema.Schema `json:"inputSchema"`
-	OutputSchema *jsonschema.Schema `json:"outputSchema"`
-}
-
-// printSchema writes the criticalthinking tool contract (description + JSON
-// Schemas) to w as pretty JSON. Schemas come from jsonschema.For[T](nil),
-// which defaults to &jsonschema.ForOptions{} — the same call the MCP SDK makes
-// internally (jsonschema.ForType(rt, &jsonschema.ForOptions{})). The
-// inputSchema is therefore byte-identical to what MCP clients receive in
-// tools/list. The outputSchema is what the SDK would generate for
-// ThoughtResponse (and what the tool's structuredContent conforms to); the
-// MCP tool itself advertises no output schema, since its handler output type
-// is `any`.
-func printSchema(w io.Writer) error {
-	in, err := jsonschema.For[thinking.ThoughtData](nil)
-	if err != nil {
-		return fmt.Errorf("input schema: %w", err)
-	}
-	out, err := jsonschema.For[thinking.ThoughtResponse](nil)
-	if err != nil {
-		return fmt.Errorf("output schema: %w", err)
-	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(toolDescriptor{
-		Name:         "criticalthinking",
-		Description:  thinking.ToolDescription,
-		InputSchema:  in,
-		OutputSchema: out,
-	})
-}
 
 func main() {
 	// `schema` subcommand: print the tool contract and exit. Checked before
