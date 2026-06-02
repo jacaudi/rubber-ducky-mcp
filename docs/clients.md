@@ -7,7 +7,7 @@ All snippets assume the binary `critical-thinking` is on your `$PATH`. After `go
 ### stdio
 
 ```bash
-claude mcp add critical-thinking -- critical-thinking
+claude mcp add critical-thinking -- critical-thinking serve
 ```
 
 Add `--scope user` to make it available in every project, or `--scope project` to commit it to a `.mcp.json` file in the repo. The default `local` scope keeps it private to the current project on this machine.
@@ -17,7 +17,7 @@ Add `--scope user` to make it available in every project, or `--scope project` t
 Run the server in one terminal:
 
 ```bash
-critical-thinking -http :3000
+critical-thinking serve --http :3000
 ```
 
 Register it with Claude Code:
@@ -42,7 +42,8 @@ Inside a Claude Code session, `/mcp` shows live status, and the `criticalthinkin
 {
   "mcpServers": {
     "critical-thinking": {
-      "command": "critical-thinking"
+      "command": "critical-thinking",
+      "args": ["serve"]
     }
   }
 }
@@ -58,7 +59,8 @@ Restart Claude Desktop after editing.
 {
   "mcpServers": {
     "critical-thinking": {
-      "command": "critical-thinking"
+      "command": "critical-thinking",
+      "args": ["serve"]
     }
   }
 }
@@ -72,7 +74,8 @@ Most VS Code MCP-aware extensions use the same `mcp.json` shape:
 {
   "mcpServers": {
     "critical-thinking": {
-      "command": "critical-thinking"
+      "command": "critical-thinking",
+      "args": ["serve"]
     }
   }
 }
@@ -92,14 +95,14 @@ Most VS Code MCP-aware extensions use the same `mcp.json` shape:
 }
 ```
 
-(Cursor currently prefers HTTP transport.) Run the server separately with `critical-thinking -http :3000`.
+(Cursor currently prefers HTTP transport.) Run the server separately with `critical-thinking serve --http :3000`.
 
 ## Generic HTTP (any client)
 
 Run the server in HTTP mode and point your client at `/mcp`:
 
 ```bash
-critical-thinking -http :3000
+critical-thinking serve --http :3000
 ```
 
 ```json
@@ -117,7 +120,7 @@ For browser-based clients, set `ALLOWED_ORIGINS` to permit your origin — see [
 ## Docker
 
 ```bash
-docker run -d --name critical-thinking -p 3000:3000 ghcr.io/jacaudi/critical-thinking:v1.5.0
+docker run -d --name critical-thinking -p 3000:3000 ghcr.io/jacaudi/critical-thinking:v2.0.0
 ```
 
 Then use the HTTP client config above. The image binds to `0.0.0.0` automatically (via `DOCKER=true`); pair it with appropriate firewall rules in production.
@@ -129,16 +132,16 @@ Run the engine directly, without an MCP client:
 ```bash
 # Stream thoughts: one ThoughtData JSON object per line on stdin.
 printf '%s\n' '{"thought":"...","thoughtNumber":1,"totalThoughts":3,"nextThoughtNeeded":true,"confidence":0.6,"assumptions":[],"critique":"...","counterArgument":"...","nextStepRationale":"..."}' \
-  | critical-thinking -cli
+  | critical-thinking cli
 
 # Structured NDJSON output instead of the transcript:
-... | critical-thinking -cli -json
+... | critical-thinking cli --json
 
 # Print the tool contract (description + JSON Schemas) for a model to read:
 critical-thinking schema
 ```
 
-`-cli` keeps one in-memory session for the process, so history, confidence, and
+`critical-thinking cli` keeps one in-memory session for the process, so history, confidence, and
 branches accumulate across input lines. Validation/parse errors are written to
-stderr (or to stdout in `-json` mode, to keep the stream complete) and the
+stderr (or to stdout in `--json` mode, to keep the stream complete) and the
 process continues; the exit code is `1` if any line errored, else `0`.

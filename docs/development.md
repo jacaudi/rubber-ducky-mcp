@@ -28,10 +28,10 @@ The fastest way to manually exercise the tool is the official [MCP Inspector](ht
 
 ```bash
 # stdio
-npx @modelcontextprotocol/inspector critical-thinking
+npx @modelcontextprotocol/inspector critical-thinking serve
 
 # HTTP
-critical-thinking -http :3000 &
+critical-thinking serve --http :3000 &
 npx @modelcontextprotocol/inspector --uri http://localhost:3000/mcp
 ```
 

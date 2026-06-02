@@ -15,7 +15,7 @@ The single tool is `criticalthinking`. Every call must include the four critical
 ```bash
 go install github.com/jacaudi/critical-thinking/cmd/critical-thinking@latest
 # or
-docker pull ghcr.io/jacaudi/critical-thinking:v1.5.0
+docker pull ghcr.io/jacaudi/critical-thinking:v2.0.0
 ```
 
 The Go install lands the binary at `$GOPATH/bin/critical-thinking`.
@@ -24,17 +24,17 @@ The Go install lands the binary at `$GOPATH/bin/critical-thinking`.
 
 ```bash
 # stdio (default; for Claude Desktop, Codex CLI, VS Code, etc.)
-critical-thinking
+critical-thinking serve
 
 # Streamable HTTP
-critical-thinking -http :3000
+critical-thinking serve --http :3000
 
 # Docker (HTTP on :3000)
-docker run --rm -p 3000:3000 ghcr.io/jacaudi/critical-thinking:v1.5.0
+docker run --rm -p 3000:3000 ghcr.io/jacaudi/critical-thinking:v2.0.0
 
 # CLI mode — pipe NDJSON ThoughtData directly, no MCP host required
-critical-thinking -cli            # prints narrated transcript to stdout
-critical-thinking -cli -json      # prints structured ThoughtResponse as NDJSON
+critical-thinking cli             # prints narrated transcript to stdout
+critical-thinking cli --json      # prints structured ThoughtResponse as NDJSON
 critical-thinking schema          # prints the tool contract (description + JSON Schemas) and exits
 ```
 
@@ -73,13 +73,13 @@ Add the server with the `claude` CLI — pick one transport.
 **stdio** (the binary runs as a subprocess of Claude Code):
 
 ```bash
-claude mcp add critical-thinking -- critical-thinking
+claude mcp add critical-thinking -- critical-thinking serve
 ```
 
 **Streamable HTTP** (run the server separately, point Claude Code at the URL):
 
 ```bash
-critical-thinking -http :3000 &
+critical-thinking serve --http :3000 &
 claude mcp add --transport http critical-thinking http://localhost:3000/mcp
 ```
 
@@ -94,7 +94,7 @@ Verify with `claude mcp list`. Inside a session, `/mcp` shows server status and 
 ```json
 {
   "mcpServers": {
-    "critical-thinking": { "command": "critical-thinking" }
+    "critical-thinking": { "command": "critical-thinking", "args": ["serve"] }
   }
 }
 ```

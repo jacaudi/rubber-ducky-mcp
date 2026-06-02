@@ -2,6 +2,31 @@
 
 Cumulative breaking-change log for `critical-thinking`. Most recent changes first.
 
+## v2.0.0 — Flag CLI replaced by Cobra subcommands
+
+The invocation surface moved from flags to subcommands. Every capability is unchanged —
+only how you invoke it changed. Bare `critical-thinking` now prints help (it no longer
+starts stdio automatically); use `critical-thinking serve`.
+
+| v1.x | v2.0.0 |
+|---|---|
+| `critical-thinking` (bare → stdio) | `critical-thinking serve` |
+| `critical-thinking -http :3000` | `critical-thinking serve --http :3000` |
+| `critical-thinking -cli` | `critical-thinking cli` |
+| `critical-thinking -cli -json` | `critical-thinking cli --json` |
+| `critical-thinking schema` | `critical-thinking schema` (unchanged) |
+| (none) | `critical-thinking version` / `critical-thinking --version` |
+
+**`mcp.json` / host config:** stdio entries that used `"command": "critical-thinking"` with
+no args must add `"args": ["serve"]` (TOML: `args = ["serve"]`). URL-based HTTP entries
+(`"url": "http://localhost:3000/mcp"`) are unchanged; just launch the server with
+`critical-thinking serve --http :3000` instead of `-http :3000`.
+
+`claude mcp add` stdio registration becomes
+`claude mcp add critical-thinking -- critical-thinking serve`.
+
+No engine, field, schema, cap, resource, or transport behavior changed in this release.
+
 ## Repo rename: `critical-thinking-mcp` → `critical-thinking`
 
 The repo was renamed to drop the `-mcp` suffix and align with the upstream `sequentialthinking` MCP server naming. The image, binary, and tool name were already unsuffixed; the repo and module path now match.

@@ -13,7 +13,7 @@
 ### Stdio (default)
 
 ```bash
-critical-thinking
+critical-thinking serve
 ```
 
 One process serves one session. There is no cross-stream isolation concern because there is no second stream — the process IS the session. Use this for direct integration with MCP hosts (Claude Desktop, Codex CLI, VS Code).
@@ -21,7 +21,7 @@ One process serves one session. There is no cross-stream isolation concern becau
 ### Streamable HTTP
 
 ```bash
-critical-thinking -http :3000
+critical-thinking serve --http :3000
 ```
 
 The HTTP server binds to `127.0.0.1` by default (or `0.0.0.0` when `DOCKER=true`). Each session gets its own `*mcp.Server` with its own `SequentialThinkingServer`, constructed inside a factory closure — there is no map keyed by session ID anywhere, by design. The closure scope is the cross-session isolation invariant.
