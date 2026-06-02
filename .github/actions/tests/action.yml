@@ -32,9 +32,14 @@ runs:
       run: task vet
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: latest
+      shell: bash
+      # Build golangci-lint from source with this job's Go toolchain. The
+      # marketplace action installs a prebuilt binary built with an older Go,
+      # and golangci-lint v2 refuses to run when its build-Go is lower than the
+      # go.mod target (go 1.26.3): "the Go language version used to build
+      # golangci-lint is lower than the targeted Go version". `go run` rebuilds
+      # it with the runner's Go, matching the govulncheck step below.
+      run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
 
     - name: govulncheck
       shell: bash
