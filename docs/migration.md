@@ -2,13 +2,13 @@
 
 Cumulative breaking-change log for `critical-thinking`. Most recent changes first.
 
-## v2.0.0 — Flag CLI replaced by Cobra subcommands
+## v1.6.0 — Flag CLI replaced by Cobra subcommands
 
 The invocation surface moved from flags to subcommands. Every capability is unchanged —
 only how you invoke it changed. Bare `critical-thinking` now prints help (it no longer
 starts stdio automatically); use `critical-thinking serve`.
 
-| v1.x | v2.0.0 |
+| v1.x | v1.6.0 |
 |---|---|
 | `critical-thinking` (bare → stdio) | `critical-thinking serve` |
 | `critical-thinking -http :3000` | `critical-thinking serve --http :3000` |
